@@ -42,8 +42,9 @@ async function startServer() {
 
     setTimeout(() => {
       // Protected Lua Script Response using a "Mini VM" approach
-      const targetUrl = process.env.LOADER_URL || "https://pinathub2.vercel.app/api/loader";
-      const executionCode = `loadstring(game:HttpGet("${targetUrl}"))()`;
+      // Defaulting to the user's provided GitHub raw link
+      const targetUrl = process.env.LOADER_URL || "https://raw.githubusercontent.com/xploitforceofficial-stack/pinat1/refs/heads/main/1.lua";
+      const executionCode = `local s, e = pcall(function() loadstring(game:HttpGet("${targetUrl}"))() end) if not s then warn("PinatVM Error: " .. tostring(e)) end`;
       
       // Encrypt the execution code (Simple shift encryption for the "VM")
       const key = Math.floor(Math.random() * 10) + 1;
@@ -51,7 +52,7 @@ async function startServer() {
 
       const luaScript = `-- PinatHub Virtualized Loader
 -- Signature: ${signature}
--- Built with PinatVM v1.0.4
+-- Built with PinatVM v1.0.5
 
 local _0xVM = {
     _0xData = {${encryptedBytes.join(',')}},
@@ -63,7 +64,12 @@ local _0xVM = {
             _0xOut = _0xOut .. _0xS(self._0xData[_0xI] - self._0xKey)
         end
         local _0xRes, _0xErr = pcall(function()
-            return loadstring(_0xOut)()
+            local _0xFunc = loadstring(_0xOut)
+            if _0xFunc then
+                return _0xFunc()
+            else
+                error("Failed to load internal VM string")
+            end
         end)
         if not _0xRes then
             warn("PinatVM Runtime Error: " .. tostring(_0xErr))
