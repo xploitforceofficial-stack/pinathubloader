@@ -12,42 +12,50 @@ async function startServer() {
     const accept = req.headers["accept"] || "";
 
     // Check if it's a browser request
-    const isBrowser = accept.includes("text/html");
+    // Browsers usually have 'Mozilla' in UA and accept 'text/html'
+    const isBrowser = accept.includes("text/html") && userAgent.includes("Mozilla");
+    const isRoblox = userAgent.includes("Roblox") || userAgent.includes("RobloxApp");
 
-    // If it's a browser, let it pass to Vite/Static serving
-    if (isBrowser && !userAgent.includes("Roblox")) {
+    // If it's a browser and NOT Roblox, show the website
+    if (isBrowser && !isRoblox) {
       return next();
     }
+
+    // Function to send a "Safe" Lua error instead of letting loadstring fail with nil
+    const sendLuaError = (msg: string) => {
+      res.setHeader("Content-Type", "text/plain");
+      return res.send(`warn("PinatHub Error: ${msg}"); print("Check your connection or headers.");`);
+    };
 
     // --- ANTI-EVERYTHING PROTECTIONS ---
     
     // 1. ANTI-CURL & ANTI-WGET
     if (userAgent.includes("curl") || userAgent.includes("wget") || userAgent.includes("HTTPie")) {
-      return res.status(403).send("Access Denied: Tool not allowed.");
+      return sendLuaError("Tool not allowed (Curl/Wget)");
     }
 
     // 2. ANTI-PYTHON
     if (userAgent.includes("Python") || userAgent.includes("requests") || userAgent.includes("urllib") || userAgent.includes("aiohttp")) {
-      return res.status(403).send("Access Denied: Python scripts not allowed.");
+      return sendLuaError("Python scripts not allowed");
     }
 
     // 3. ANTI-SCRAPPER
     if (userAgent.includes("scrapy") || userAgent.includes("bot") || userAgent.includes("crawler") || userAgent.includes("spider")) {
-      return res.status(403).send("Access Denied: Scrapers not allowed.");
+      return sendLuaError("Scrapers not allowed");
     }
 
     // 5. ANTI-CRACK / DYNAMIC SIGNATURE
     const hour = new Date().getUTCHours();
     const signature = Buffer.from(`pinathub-auth-${hour}`).toString('base64');
     
-    // Random delay 100-500ms
-    const delay = Math.floor(Math.random() * 400) + 100;
+    // Random delay 100-300ms for realism
+    const delay = Math.floor(Math.random() * 200) + 100;
 
     setTimeout(() => {
       // Protected Lua Script Response using Environment Variable
       const targetUrl = process.env.LOADER_URL || "https://pinathub2.vercel.app/api/loader";
       
-      // Basic protection: Hex encoding the URL to prevent simple string scraping
+      // Basic protection: Hex encoding the URL
       const hexUrl = targetUrl.split('').map(c => '\\' + c.charCodeAt(0).toString(10)).join('');
 
       const luaScript = `-- PinatHub Protected Loader
@@ -57,10 +65,15 @@ async function startServer() {
 local _0xPinat = "${hexUrl}"
 local function _0xExecute(_0xData)
     local _0xStatus, _0xError = pcall(function()
-        loadstring(game:HttpGet(_0xData))()
+        local _0xBody = game:HttpGet(_0xData)
+        if _0xBody:find("404") or _0xBody:find("Not Found") then
+            error("Target Loader URL returned 404. Is your repo public?")
+        end
+        loadstring(_0xBody)()
     end)
     if not _0xStatus then
-        warn("PinatHub Error: " .. tostring(_0xError))
+        warn("PinatHub Execution Error: " .. tostring(_0xError))
+        print("Make sure your GitHub Repo is PUBLIC if using raw links.")
     end
 end
 
