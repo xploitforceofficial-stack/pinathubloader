@@ -126,7 +126,7 @@ const Footer = () => {
 
 const Home = () => {
   const [copied, setCopied] = useState(false);
-  const loaderString = 'loadstring(game:HttpGet("https://pinathubloader.vercel.app/"))()';
+  const loaderString = 'loadstring(game:HttpGet("https://pinathubloader.vercel.app/api/loader"))()';
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(loaderString);
